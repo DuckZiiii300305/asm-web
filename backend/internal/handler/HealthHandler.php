@@ -15,14 +15,30 @@ class HealthHandler
             // check connection
             $db->query("SELECT 1");
 
+            // total connections
+            $openConnections = $db
+                ->query("SELECT COUNT(*) FROM information_schema.PROCESSLIST")
+                ->fetchColumn();
+
+            // active connections
+            $inUse = $db
+                ->query("SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE Command != 'Sleep'")
+                ->fetchColumn();
+
+            // max connections
+            $stmt = $db->query("SHOW VARIABLES LIKE 'max_connections'");
+            $max = $stmt->fetch(PDO::FETCH_ASSOC)["Value"];
+
+            $idle = $openConnections - $inUse;
+
             $response = [
                 "status" => "ok",
                 "database" => [
                     "status" => "connected",
-                    "open_connections" => 1,
-                    "in_use" => 1,
-                    "idle" => 0,
-                    "max_open" => 25
+                    "open_connections" => (int)$openConnections,
+                    "in_use" => (int)$inUse,
+                    "idle" => (int)$idle,
+                    "max_open" => (int)$max
                 ],
                 "timestamp" => gmdate("c")
             ];
@@ -31,14 +47,11 @@ class HealthHandler
 
         } catch (Exception $e) {
 
+            error_log("Health check failed: " . $e->getMessage());
             $response = [
                 "status" => "degraded",
                 "database" => [
-                    "status" => "disconnected",
-                    "open_connections" => 0,
-                    "in_use" => 0,
-                    "idle" => 0,
-                    "max_open" => 25
+                    "status" => "disconnected"
                 ],
                 "timestamp" => gmdate("c")
             ];

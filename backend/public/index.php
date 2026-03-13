@@ -9,7 +9,9 @@ require_once __DIR__ . '/../internal/service/AssetService.php';
 require_once __DIR__ . '/../internal/handler/AssetHandler.php';
 require_once __DIR__ . '/../internal/handler/HealthHandler.php';
 require_once __DIR__ . '/../internal/handler/Response.php';
+require_once __DIR__ . '/../internal/config/env.php';
 
+loadEnv(__DIR__ . '/../.env');
 
 $uri = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 $uri = str_replace("/asm-web/backend/public", "", $uri);
