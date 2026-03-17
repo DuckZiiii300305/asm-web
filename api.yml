@@ -1,0 +1,89 @@
+openapi: 3.0.0
+info:
+  title: ASM Web API
+  version: 1.0.0
+paths:
+  /assets/{id}/scan:
+    post:
+      summary: Start a scan job for an asset
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scan_type:
+                  type: string
+                  enum: [dns, whois, subdomain, ip, port, ssl, tech, cert_trans, asn, all]
+      responses:
+        '202':
+          description: Scan started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  asset_id:
+                    type: string
+                  scan_type:
+                    type: string
+                  status:
+                    type: string
+                  started_at:
+                    type: string
+                    format: date-time
+                  ended_at:
+                    type: string
+                    format: date-time
+                  error:
+                    type: string
+                  results:
+                    type: integer
+                  created_at:
+                    type: string
+                    format: date-time
+  /scan-jobs/{id}:
+    get:
+      summary: Get scan job status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status
+  /scan-jobs/{id}/results:
+    get:
+      summary: Get scan job results
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scan results
+  /assets/{id}/results:
+    get:
+      summary: Get all scan results for an asset
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Asset scan results

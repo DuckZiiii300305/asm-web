@@ -1,0 +1,75 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ homework ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  php-tests:
+    name: PHP Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.1
+
+      - name: Run unit tests
+        run: php backend/tests/run_tests.php
+
+
+  trivy:
+    name: Trivy Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+
+      - name: Scan filesystem
+        run: trivy fs --severity HIGH,CRITICAL --exit-code 1 --no-progress .
+
+
+  gitleaks:
+    name: Secret Detection (Gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+
+
+  trufflehog:
+    name: Deep Secret Scan (TruffleHog)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install TruffleHog
+        run: pip3 install trufflehog
+
+      - name: Run TruffleHog scan
+        run: |
+          trufflehog filesystem --directory . --json > trufflehog-report.json || true
+
+      - name: Upload scan report
+        uses: actions/upload-artifact@v3
+        with:
+          name: trufflehog-report
+          path: trufflehog-report.json

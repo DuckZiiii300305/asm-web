@@ -1,7 +1,7 @@
 -- Migration: Create assets table
 -- Version: 001
 -- Description: Initial schema for asset management system
-
+USE asm_web;
 CREATE TABLE IF NOT EXISTS assets (
 
     -- Primary key: UUID stored as CHAR(36)

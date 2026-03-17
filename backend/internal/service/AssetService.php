@@ -31,6 +31,10 @@ class AssetService
             throw Errors::InvalidType();
         }
 
+        if (!AssetValidator::validateNameByType($data["name"], $data["type"])) {
+            throw Errors::InvalidInput();
+        }
+
         $status = $data["status"] ?? AssetStatus::ACTIVE;
 
         if (!AssetStatus::isValid($status)) {
@@ -52,7 +56,15 @@ class AssetService
         return $asset;
     }
 
-    public function list($page = 1, $limit = 20, $type = null, $status = null)
+    public function list(
+        $page = 1,
+        $limit = 20,
+        $type = null,
+        $status = null,
+        $search = null,
+        $sortBy = "created_at",
+        $sortOrder = "desc"
+    )
     {
         if ($type && !AssetType::isValid($type)) {
             throw Errors::InvalidType();
@@ -62,7 +74,23 @@ class AssetService
             throw Errors::InvalidStatus();
         }
 
-        return $this->repo->list($page, $limit, $type, $status);
+        $allowedSort = ["name","type","status","created_at","updated_at"];
+
+        if (!in_array($sortBy, $allowedSort)) {
+            $sortBy = "created_at";
+        }
+
+        $sortOrder = strtolower($sortOrder) === "asc" ? "asc" : "desc";
+
+        return $this->repo->list(
+            $page,
+            $limit,
+            $type,
+            $status,
+            $search,
+            $sortBy,
+            $sortOrder
+        );
     }
 
     public function get($id)

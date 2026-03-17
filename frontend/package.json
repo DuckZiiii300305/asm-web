@@ -1,0 +1,12 @@
+{
+  "name": "asm-web-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node app.js",
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

@@ -44,9 +44,20 @@ class AssetHandler
 
         $type = $_GET["type"] ?? null;
         $status = $_GET["status"] ?? null;
+        $search = $_GET["search"] ?? null;
 
-        $result = $this->service->list($page, $limit, $type, $status);
+        $sortBy = $_GET["sort_by"] ?? "created_at";
+        $sortOrder = $_GET["sort_order"] ?? "desc";
 
+        $result = $this->service->list(
+            $page,
+            $limit,
+            $type,
+            $status,
+            $search,
+            $sortBy,
+            $sortOrder
+        );
         Response::json($result);
     }
 
@@ -137,56 +148,34 @@ class AssetHandler
     public function batchCreate()
     {
         try {
-
             $input = json_decode(file_get_contents("php://input"), true);
-
             $result = $this->service->batchCreate($input);
-
-            http_response_code(201);
-
-            echo json_encode($result);
-
+            Response::json($result, 201);
         } catch (Exception $e) {
-
-            http_response_code(400);
-
-            echo json_encode([
-                "error" => $e->getMessage()
-            ]);
+            Response::error($e->getMessage(), 400);
         }
     }
+
     public function batchDelete()
     {
         try {
-
             if (!isset($_GET["ids"])) {
-                Response::json([
-                    "error" => "ids required"
-                ], 400);
+                Response::error("ids required", 400);
                 return;
             }
 
             $ids = explode(",", $_GET["ids"]);
-
             $result = $this->service->batchDelete($ids);
-
             Response::json($result);
-
         } catch (Exception $e) {
-
-            Response::json([
-                "error" => $e->getMessage()
-            ], 400);
-
+            Response::error($e->getMessage(), 400);
         }
     }
+
     public function search()
     {
         if (!isset($_GET['q'])) {
-            http_response_code(400);
-            echo json_encode([
-                "error" => "Missing query parameter q"
-            ]);
+            Response::error("Missing query parameter q", 400);
             return;
         }
 
@@ -194,16 +183,9 @@ class AssetHandler
 
         try {
             $results = $this->service->search($query);
-
-            echo json_encode($results);
-
+            Response::json($results);
         } catch (Exception $e) {
-
-            http_response_code(500);
-
-            echo json_encode([
-                "error" => $e->getMessage()
-            ]);
+            Response::error($e->getMessage(), 500);
         }
     }
 }

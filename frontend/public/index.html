@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASM Web Frontend</title>
+  <style>
+    :root { --bg: #f5f6fa; --card: #ffffff; --text: #2d3436; --accent: #0984e3; --danger: #d63031; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); }
+    .page { max-width: 1100px; margin: auto; padding: 16px; }
+    h1, h2 { margin-bottom: 10px; }
+    .grid { display: grid; grid-gap: 16px; grid-template-columns: 1fr 1fr; }
+    .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 16px rgba(0,0,0,.08); padding: 14px; }
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+    input, select, button, textarea { border-radius: 6px; border: 1px solid #ccc; font-size: 14px; padding: 8px; }
+    button { cursor: pointer; border: none; color: #fff; background: var(--accent); }
+    button.danger { background: var(--danger); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+    .actions button { margin-right: 6px; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #dfe6e9; margin-right: 4px; }
+    .log { max-height: 180px; overflow: auto; background: #f0f0f0; padding: 8px; border-radius: 8px; font-family: monospace; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>ASM Web Frontend</h1>
+    <div class="grid">
+      <div class="card">
+        <h2>Create / Update Asset</h2>
+        <div class="toolbar">
+          <input id="assetName" placeholder="Asset name" style="flex:1" />
+          <select id="assetType">
+            <option value="domain">domain</option>
+            <option value="ip">ip</option>
+            <option value="service">service</option>
+          </select>
+          <button id="createAsset">Save Asset</button>
+        </div>
+        <div id="formHelper" style="margin-top:8px;color:#555;font-size:13px;">New mode</div>
+      </div>
+
+      <div class="card">
+        <h2>Scan Options</h2>
+        <div class="toolbar">
+          <select id="scanAssetSelect" style="flex:1">
+            <option value="">-- Select asset to scan --</option>
+          </select>
+          <select id="scanType" style="flex:1">
+            <option value="dns">dns</option>
+            <option value="whois">whois</option>
+            <option value="subdomain">subdomain</option>
+            <option value="ip">ip</option>
+            <option value="port">port</option>
+            <option value="ssl">ssl</option>
+            <option value="tech">tech</option>
+            <option value="cert_trans">cert_trans</option>
+            <option value="asn">asn</option>
+            <option value="all">all</option>
+          </select>
+          <button id="scanAsset">Scan</button>
+        </div>
+        <div id="scanStatus" style="margin-top:8px;color:#555;font-size:13px;"></div>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:16px;">
+      <div class="card" style="grid-column: span 2;">
+        <h2>Asset List</h2>
+        <table>
+          <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="assetList"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:16px;">
+      <div class="card" style="grid-column: span 2;">
+        <h2>Scan Results</h2>
+        <div class="toolbar" style="margin-bottom:10px;">
+          <select id="resultAssetSelect" style="min-width:250px">
+            <option value="">-- Select asset results --</option>
+          </select>
+          <select id="resultFilter">
+            <option value="all">All</option>
+            <option value="subdomain">subdomain</option>
+            <option value="dns">dns</option>
+            <option value="whois">whois</option>
+            <option value="ip">ip</option>
+            <option value="port">port</option>
+            <option value="ssl">ssl</option>
+            <option value="tech">tech</option>
+            <option value="cert_trans">cert_trans</option>
+            <option value="asn">asn</option>
+          </select>
+          <button id="refreshResults">Refresh</button>
+        </div>
+        <div id="resultsContainer"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <h2>Dashboard</h2>
+      <div id="dashboard"></div>
+      <h3>Log</h3>
+      <div class="log" id="log"></div>
+    </div>
+
+  <script>
+    const API_BASE = '/api';
+    let currentAssetId = null;
+    let editingAssetId = null;
+
+    function log(msg) {
+      const l = document.getElementById('log');
+      l.innerText = `[${new Date().toLocaleTimeString()}] ${msg}\n` + l.innerText;
+    }
+
+    async function fetchJSON(url, opts = {}) {
+      const r = await fetch(url, opts);
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(text);
+      }
+      return r.json();
+    }
+
+    function clearAssetForm() {
+      editingAssetId = null;
+      document.getElementById('assetName').value = '';
+      document.getElementById('assetType').value = 'domain';
+      document.getElementById('formHelper').innerText = 'New mode';
+    }
+
+    async function refreshAssets() {
+      const tbody = document.getElementById('assetList');
+      const scanSelect = document.getElementById('scanAssetSelect');
+      const resultSelect = document.getElementById('resultAssetSelect');
+
+      tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+      scanSelect.innerHTML = '<option value="">-- Select asset to scan --</option>';
+      resultSelect.innerHTML = '<option value="">-- Select asset results --</option>';
+
+      const res = await fetchJSON(API_BASE + '/assets');
+      const assets = res.data || res;
+
+      if (!assets.length) {
+        tbody.innerHTML = '<tr><td colspan="4">No assets yet</td></tr>';
+      } else {
+        tbody.innerHTML = '';
+        assets.forEach(asset => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${asset.name}</td>
+            <td>${asset.type}</td>
+            <td>${asset.status}</td>
+            <td class="actions">
+              <button onclick="startEdit('${asset.id}','${asset.name}','${asset.type}')">Edit</button>
+              <button onclick="deleteAsset('${asset.id}')" class="danger">Delete</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+
+          const opt = document.createElement('option');
+          opt.value = asset.id;
+          opt.textContent = `${asset.name} (${asset.type})`;
+          scanSelect.appendChild(opt);
+
+          const opt2 = document.createElement('option');
+          opt2.value = asset.id;
+          opt2.textContent = `${asset.name} (${asset.type})`;
+          resultSelect.appendChild(opt2);
+        });
+      }
+
+      if (currentAssetId) {
+        scanSelect.value = currentAssetId;
+        resultSelect.value = currentAssetId;
+      }
+
+      dashboard(assets);
+    }
+
+    function startEdit(id, name, type) {
+      editingAssetId = id;
+      document.getElementById('assetName').value = name;
+      document.getElementById('assetType').value = type;
+      document.getElementById('formHelper').innerText = 'Edit mode: ' + id;
+    }
+
+    async function createAsset() {
+      const name = document.getElementById('assetName').value.trim();
+      const type = document.getElementById('assetType').value;
+      if (!name) { alert('Name required'); return; }
+
+      if (editingAssetId) {
+        await fetchJSON(API_BASE + '/assets/' + editingAssetId, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name,type}) });
+        log('Asset updated ' + editingAssetId);
+      } else {
+        await fetchJSON(API_BASE + '/assets', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name,type}) });
+        log('Asset created ' + name);
+      }
+      clearAssetForm();
+      refreshAssets();
+    }
+
+    async function deleteAsset(id) {
+      if (!confirm('Delete asset?')) return;
+      await fetchJSON(API_BASE + '/assets/' + id, { method:'DELETE' });
+      log('Deleted asset ' + id);
+      if (currentAssetId === id) currentAssetId = null;
+      refreshAssets();
+      refreshResults();
+    }
+
+    async function selectAsset(id) {
+      currentAssetId = id;
+      const scanSelect = document.getElementById('scanAssetSelect');
+      const resultSelect = document.getElementById('resultAssetSelect');
+      scanSelect.value = id;
+      resultSelect.value = id;
+      document.getElementById('scanStatus').innerText = 'Selected asset ' + id;
+      refreshResults();
+    }
+
+    async function scanAsset() {
+      const selectedAsset = document.getElementById('scanAssetSelect').value;
+      if (!selectedAsset) { alert('Select asset first'); return; }
+      currentAssetId = selectedAsset;
+      document.getElementById('resultAssetSelect').value = selectedAsset;
+
+      const scanType = document.getElementById('scanType').value;
+      if (!scanType) return;
+      const result = await fetchJSON(API_BASE + '/assets/' + selectedAsset + '/scan', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({scan_type: scanType})
+      });
+      log(`Started scan ${scanType} job ${result.id}`);
+      document.getElementById('scanStatus').innerText = `Scan ${scanType} started: ${result.id}`;
+      refreshResults();
+    }
+
+    async function refreshResults() {
+      const container = document.getElementById('resultsContainer');
+      if (!currentAssetId) {
+        container.innerHTML = '<p>Select an asset to view results</p>';
+        return;
+      }
+
+      const filter = document.getElementById('resultFilter').value;
+      const rows = await fetchJSON(API_BASE + '/assets/' + currentAssetId + '/results');
+      let out = '';
+      if (!rows || rows.length === 0) {
+        container.innerHTML = '<p>No results yet</p>';
+        return;
+      }
+
+      const displayRows = rows.filter(r => filter === 'all' || r.scan_type === filter);
+      if (!displayRows.length) {
+        container.innerHTML = '<p>No results for type ' + filter + '</p>';
+        return;
+      }
+
+      out += '<div><b>Showing ' + displayRows.length + ' result set(s) for ' + (filter || 'all') + '</b></div>';
+      displayRows.forEach(r => {
+        out += `<div class="scan-result">
+          <div><b>Job:</b> ${r.job_id} <span class="tag">${r.scan_type}</span></div>
+          <div><b>Status:</b> ${r.status || 'unknown'}</div>
+          <pre>${JSON.stringify(r.results, null, 2)}</pre>
+        </div>`;
+      });
+
+      container.innerHTML = out;
+    }
+
+    function dashboard(items) {
+      const d = document.getElementById('dashboard');
+      const total = items.length;
+      const byType = {};
+      let active = 0;
+      items.forEach(item => { byType[item.type] = (byType[item.type] || 0) + 1; if (item.status === 'active') active++; });
+      d.innerHTML = `<p>Total assets: <b>${total}</b> | Active: <b>${active}</b></p>` +
+        `<p>${Object.entries(byType).map(([k,v]) => `${k}:${v}`).join(' | ')}</p>`;
+    }
+
+    document.getElementById('createAsset').onclick = createAsset;
+    document.getElementById('scanAsset').onclick = scanAsset;
+    document.getElementById('refreshResults').onclick = refreshResults;
+    document.getElementById('resultFilter').onchange = refreshResults;
+    document.getElementById('resultAssetSelect').onchange = (e) => {
+      currentAssetId = e.target.value;
+      if (currentAssetId) {
+        document.getElementById('scanAssetSelect').value = currentAssetId;
+        document.getElementById('scanStatus').innerText = 'Selected asset ' + currentAssetId;
+      }
+      refreshResults();
+    };
+    document.getElementById('scanAssetSelect').onchange = (e) => {
+      currentAssetId = e.target.value;
+      if (currentAssetId) {
+        document.getElementById('resultAssetSelect').value = currentAssetId;
+        document.getElementById('scanStatus').innerText = 'Selected asset ' + currentAssetId;
+      }
+    };
+
+    clearAssetForm();
+    refreshAssets();
+
+  </script>
+</body>
+</html>

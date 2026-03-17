@@ -20,7 +20,9 @@ function connectWithRetry($maxRetries = 5)
 
             $pdo = new PDO($dsn, $user, $pass, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_TIMEOUT => 2
+                PDO::ATTR_TIMEOUT => 2,
+                PDO::ATTR_PERSISTENT => true,
+                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8mb4'
             ]);
 
             return $pdo;
@@ -48,6 +50,17 @@ function getDB()
 
     if ($db === null) {
         $db = connectWithRetry();
+        return $db;
+    }
+
+    try {
+        $db->query('SELECT 1');
+    } catch (PDOException $e) {
+        if ($e->getCode() === 'HY000' || strpos($e->getMessage(), 'MySQL server has gone away') !== false) {
+            $db = connectWithRetry();
+        } else {
+            throw $e;
+        }
     }
 
     return $db;
