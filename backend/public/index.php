@@ -1,79 +1,72 @@
 <?php
 
-require_once __DIR__ . '/../internal/config/database.php';
-require_once __DIR__ . '/../internal/router/Router.php';
+// CORS middleware (Bài 3.1)
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-require_once __DIR__ . '/../internal/storage/mysql/AssetMySQLRepository.php';
-require_once __DIR__ . '/../internal/service/AssetService.php';
-
-require_once __DIR__ . '/../internal/handler/AssetHandler.php';
-require_once __DIR__ . '/../internal/handler/HealthHandler.php';
-require_once __DIR__ . '/../internal/handler/Response.php';
-
-
-$uri = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-$uri = str_replace("/asm-web/backend/public", "", $uri);
-
-/* ---- health check chạy trước DB ---- */
-if ($uri === "/health") {
-    $healthHandler = new HealthHandler();
-    $healthHandler->health();
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
     exit;
 }
 
-/* ---- connect DB cho các API khác ---- */
+require_once __DIR__ . '/../internal/bootstrap.php';
+
+$uri = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+$scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+$scriptDir = rtrim($scriptDir, '/');
+
+if ($scriptDir !== '' && strpos($uri, $scriptDir) === 0) {
+    $uri = substr($uri, strlen($scriptDir));
+}
+
+$uri = '/' . trim($uri, '/');
+
 try {
-
     $db = getDB();
-
 } catch (Exception $e) {
-
-    http_response_code(503);
-
-    echo json_encode([
-        "error" => "Database unavailable"
-    ]);
-
+    Response::error("Database unavailable", 503);
     exit;
 }
 
 $repo = new AssetMySQLRepository($db);
 $service = new AssetService($repo);
-
+$scanRepo = new ScanMySQLRepository($db);
+$scanService = new ScanService($repo, $scanRepo);
+$scanHandler = new ScanHandler($scanService);
 $assetHandler = new AssetHandler($service);
 $healthHandler = new HealthHandler();
 
 $router = new Router();
 
-
-// ROOT
 $router->get("/", function () {
     Response::json([
         "message" => "ASM Web API running"
     ]);
 });
 
-// HEALTH
 $router->get("/health", [$healthHandler, "health"]);
 
-
-// ----- STATIC ROUTES
 $router->get("/assets/stats", [$assetHandler, "stats"]);
 $router->get("/assets/count", [$assetHandler, "count"]);
 $router->post("/assets/batch", [$assetHandler, "batchCreate"]);
 $router->delete("/assets/batch", [$assetHandler, "batchDelete"]);
-$router->get('/assets/search', [$assetHandler, 'search']);
+$router->get("/assets/search", [$assetHandler, "search"]);
 
-
-// ----- COLLECTION ROUTES
 $router->get("/assets", [$assetHandler, "list"]);
 $router->post("/assets", [$assetHandler, "create"]);
 
-
-// ----- PARAM ROUTES
 $router->get("/assets/{id}", [$assetHandler, "get"]);
 $router->put("/assets/{id}", [$assetHandler, "update"]);
 $router->delete("/assets/{id}", [$assetHandler, "delete"]);
 
+$router->get("/scan-jobs/{id}", [$scanHandler, "status"]);
+$router->post("/assets/{id}/scan", [$scanHandler, "start"]);
+$router->get("/assets/{id}/scans", [$scanHandler, "listByAsset"]);
+$router->get("/scan-jobs/{id}/results", [$scanHandler, "getResults"]);
+$router->get("/assets/{id}/dns", [$scanHandler, "assetDNS"]);
+$router->get("/assets/{id}/whois", [$scanHandler, "assetWHOIS"]);
+$router->get("/assets/{id}/subdomains", [$scanHandler, "assetSubdomains"]);
+$router->get("/assets/{id}/results", [$scanHandler, "assetResults"]);
 
 $router->dispatch($_SERVER["REQUEST_METHOD"], $uri);

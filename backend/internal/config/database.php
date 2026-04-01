@@ -2,11 +2,11 @@
 
 function connectWithRetry($maxRetries = 5)
 {
-    $host = "127.0.0.1";
-    $db   = "asm_web";
-    $user = "root";
-    $pass = "";
-    $charset = "utf8mb4";
+    $host = $_ENV["DB_HOST"] ?? "127.0.0.1";
+    $db   = $_ENV["DB_NAME"] ?? "asm_web";
+    $user = $_ENV["DB_USER"] ?? "root";
+    $pass = $_ENV["DB_PASS"] ?? "";
+    $charset = $_ENV["DB_CHARSET"] ?? "utf8mb4";
 
     $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 
@@ -14,29 +14,28 @@ function connectWithRetry($maxRetries = 5)
 
     while ($attempt <= $maxRetries) {
 
-        error_log("🔄 Database connection attempt {$attempt}/{$maxRetries}...");
+        error_log("Database connection attempt {$attempt}/{$maxRetries}");
 
         try {
 
             $pdo = new PDO($dsn, $user, $pass, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_TIMEOUT => 2
+                PDO::ATTR_TIMEOUT => 2,
+                PDO::ATTR_PERSISTENT => true,
+                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8mb4'
             ]);
-
-            error_log("✅ Database connected successfully!");
 
             return $pdo;
 
         } catch (PDOException $e) {
 
             if ($attempt == $maxRetries) {
-                error_log("❌ Database connection failed after {$maxRetries} attempts.");
                 throw $e;
             }
 
             $wait = pow(2, $attempt - 1);
 
-            error_log("⚠️ Connection failed: {$e->getMessage()} - retry in {$wait}s");
+            error_log("Connection failed: {$e->getMessage()} retry in {$wait}s");
 
             sleep($wait);
 
@@ -50,38 +49,19 @@ function getDB()
     static $db = null;
 
     if ($db === null) {
-        $db = connectWithRetry(5);
+        $db = connectWithRetry();
+        return $db;
+    }
+
+    try {
+        $db->query('SELECT 1');
+    } catch (PDOException $e) {
+        if ($e->getCode() === 'HY000' || strpos($e->getMessage(), 'MySQL server has gone away') !== false) {
+            $db = connectWithRetry();
+        } else {
+            throw $e;
+        }
     }
 
     return $db;
-}
-
-
-function checkDBConnection()
-{
-    $host = "127.0.0.1";
-    $db   = "asm_web";
-    $user = "root";
-    $pass = "";
-    $charset = "utf8mb4";
-
-    try {
-
-        $pdo = new PDO(
-            "mysql:host=$host;dbname=$db;charset=$charset",
-            $user,
-            $pass,
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_TIMEOUT => 1
-            ]
-        );
-
-        $pdo->query("SELECT 1");
-
-        return true;
-
-    } catch (Exception $e) {
-        return false;
-    }
 }

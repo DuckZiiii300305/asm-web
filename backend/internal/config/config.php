@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/env.php';
 
-loadEnv(__DIR__ . '/../../.env');
+loadEnv(__DIR__ . '/../../.env.docker');
 
 return [
     "db_host" => $_ENV["DB_HOST"] ?? "127.0.0.1",

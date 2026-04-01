@@ -154,7 +154,15 @@ class AssetMySQLRepository implements AssetRepository
             throw $e;
         }
     }
-    public function list($page, $limit, $type = null, $status = null)
+    public function list(
+        $page,
+        $limit,
+        $type = null,
+        $status = null,
+        $search = null,
+        $sortBy = "created_at",
+        $sortOrder = "desc"
+    )
     {
         $offset = ($page - 1) * $limit;
 
@@ -170,6 +178,10 @@ class AssetMySQLRepository implements AssetRepository
             $where[] = "status = ?";
             $params[] = $status;
         }
+        if ($search) {
+            $where[] = "name LIKE ?";
+            $params[] = "%" . $search . "%";
+        }
 
         $whereSQL = "";
 
@@ -180,7 +192,7 @@ class AssetMySQLRepository implements AssetRepository
         $sql = "
             SELECT * FROM assets
             $whereSQL
-            ORDER BY created_at DESC
+            ORDER BY $sortBy $sortOrder
             LIMIT ? OFFSET ?
         ";
 
@@ -239,4 +251,4 @@ class AssetMySQLRepository implements AssetRepository
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    }
+}

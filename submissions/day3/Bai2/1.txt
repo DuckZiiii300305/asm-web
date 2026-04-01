@@ -1,0 +1,32 @@
+C:\xampp\htdocs\asm-web>php backend\tests\run_tests.php
+Running C:\xampp\htdocs\asm-web\backend\tests/Model/AssetTest.php ...
+Asset validation tests passed
+Exit code: 0
+
+Running C:\xampp\htdocs\asm-web\backend\tests/Scanner/DNSScannerTest.php ...
+DNS scanner tests passed
+Exit code: 0
+
+Running C:\xampp\htdocs\asm-web\backend\tests/Scanner/IPScannerTest.php ...
+IP scanner tests passed
+Exit code: 0
+
+Running C:\xampp\htdocs\asm-web\backend\tests/Scanner/PortScannerTest.php ...
+Port scanner tests passed
+Exit code: 0
+
+Running C:\xampp\htdocs\asm-web\backend\tests/Scanner/SSLScannerTest.php ...
+SSL scanner tests passed
+Exit code: 0
+
+Running C:\xampp\htdocs\asm-web\backend\tests/Scanner/Test.php ...
+Could not open input file: C:\xampp\htdocs\asm-web\backend\tests/Scanner/Test.php
+Exit code: 1
+
+Running C:\xampp\htdocs\asm-web\backend\tests/handler/asset_handler_test.php ...
+Asset handler tests passed
+Exit code: 0
+
+Running C:\xampp\htdocs\asm-web\backend\tests/service/asset_service_test.php ...
+Asset service tests passed
+Exit code: 0

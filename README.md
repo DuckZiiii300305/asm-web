@@ -1,128 +1,69 @@
-# Environment Setup & Installation Guide
+# ASM Web - Asset Management System
 
-This guide explains how to set up the environment and run the project
-locally.
+## 📌 Overview
+This project is a simple Asset Management System with:
 
-------------------------------------------------------------------------
+- Backend: PHP (REST API)
+- Frontend: Node.js (Express)
+- Database: MySQL
+- Deployment: Docker Compose
 
-# 1. Environment Setup
+---
 
-## Requirements
+## 🚀 Requirements
 
-Before running the project, install the following tools:
+- Docker
+- Docker Compose
 
--   **PHP 8+**\
-    Download: https://www.php.net/downloads
+---
 
--   **MySQL**\
-    Download: https://dev.mysql.com/downloads/mysql/
+## ⚙️ Setup & Run Docker
 
--   **XAMPP (recommended for Windows)**\
-    Includes Apache + PHP + MySQL\
-    Download: https://www.apachefriends.org/download.html
+### 1. Clone project
 
--   **Git**\
-    Download: https://git-scm.com/downloads
-
-------------------------------------------------------------------------
-
-# 2. Installation
-
-Clone the repository:
-
-``` bash
+```bash
 git clone https://github.com/DuckZiiii300305/asm-web.git
+cd asm-web
 ```
+### 2. Cấu hình môi trường (ENV)
 
-Go to the backend directory:
+Project đã cung cấp sẵn file `.env.docker` cho từng service:
 
-``` bash
-cd asm-web/backend
+Backend: `./backend/.env.docker`
+
+Frontend: `./frontend/.env.docker`
+
+Bạn có thể chỉnh sửa nếu cần (ví dụ: DB host, port, credentials), nhưng mặc định đã chạy được với Docker Compose.
+
+### 3. Build & start containers
+```bash
+docker compose up -d --build
 ```
+Lệnh này sẽ:
 
-------------------------------------------------------------------------
+- Build image cho backend (PHP + Apache)
 
-# 3. Database Setup
+- Build frontend (Node.js)
 
-Create a database:
+- Pull MySQL image
 
-``` sql
-CREATE DATABASE asm_web;
+- Tự động khởi tạo database từ folder `backend/migrations`
+
+4. Kiểm tra container
+```bash
+docker ps
 ```
+Bạn sẽ thấy 3 service:
 
-Import the database schema:
+- `asm_mysql`
 
-``` bash
-mysql -u root -p asm_web < 001_create_assets.up.sql
-```
+- `asm_backend`
 
-If using **XAMPP**, you can also import the SQL file using
-**phpMyAdmin**.
+- `asm_frontend`
 
-------------------------------------------------------------------------
-
-# 4. Configure Database Connection
-
-Open the file:
-
-    internal/database/database.php
-
-Edit the database credentials if needed:
-
-``` php
-$host = "localhost";
-$dbname = "asm_web";
-$user = "root";
-$password = "";
-```
-
-------------------------------------------------------------------------
-
-# 5. Run the Project
-
-If you are using **XAMPP**:
-
-Move the project folder into:
-
-    C:\xampp\htdocs\
-
-Start the following services in **XAMPP Control Panel**:
-
--   Apache
--   MySQL
-
-------------------------------------------------------------------------
-
-# 6. Access the API
-
-Open your browser and go to:
-
-    http://localhost/asm-web/backend/public
-
-Example endpoint:
-
-    http://localhost/asm-web/backend/public/assets
-
-------------------------------------------------------------------------
-
-# 7. Example API Request
-
-Using **curl**:
-
-``` bash
-curl http://localhost/asm-web/backend/public/assets
-```
-
-Search example:
-
-``` bash
-curl "http://localhost/asm-web/backend/public/assets/search?q=example"
-```
-
-------------------------------------------------------------------------
-
-# 8. Project Repository
-
-GitHub Repository:
-
-https://github.com/DuckZiiii300305/asm-web
+### 5. Truy cập hệ thống
+| Service | URL |
+| :--- | :--- |
+| Frontend | http://localhost:3000 |
+| Backend | http://localhost:8000 |
+| API test | http://localhost:8000/health |

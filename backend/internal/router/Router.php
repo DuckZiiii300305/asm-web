@@ -76,7 +76,11 @@ class Router
                 continue;
             }
 
-            $params = $this->match($route["path"], $uri);
+            if ($route["path"] === $uri) {
+                $params = [];
+            } else {
+                $params = $this->match($route["path"], $uri);
+            }
 
             if ($params !== false) {
 
@@ -87,7 +91,7 @@ class Router
                 $handler = $route["handler"];
 
                 if (is_array($handler)) {
-                    call_user_func_array($handler, $params);
+                    call_user_func_array($handler, array_values($params));
                 } else {
                     call_user_func($handler);
                 }
